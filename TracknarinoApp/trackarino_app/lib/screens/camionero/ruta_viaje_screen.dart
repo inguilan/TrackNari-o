@@ -1,24 +1,23 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:provider/provider.dart';
-import 'package:geolocator/geolocator.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../models/oportunidad_model.dart';
+
 import '../../models/alerta_model.dart';
-import '../../services/location_service.dart';
-import '../../services/ors_service.dart';
-import '../../services/oportunidad_service.dart';
+import '../../models/oportunidad_model.dart';
 import '../../services/alerta_service.dart';
-import 'dart:async';
+import '../../services/location_service.dart';
+import '../../services/oportunidad_service.dart';
+import '../../services/ors_service.dart';
 
 class RutaViajeScreen extends StatefulWidget {
   final Oportunidad oportunidad;
 
-  const RutaViajeScreen({
-    super.key,
-    required this.oportunidad,
-  });
+  const RutaViajeScreen({super.key, required this.oportunidad});
 
   @override
   State<RutaViajeScreen> createState() => _RutaViajeScreenState();
@@ -31,20 +30,20 @@ class _RutaViajeScreenState extends State<RutaViajeScreen> {
   List<LatLng> _routePoints = [];
   bool _isLoadingRoute = true;
   String? _errorMessage;
-  
+
   // Información de la ruta
   double? _distanciaKm;
   int? _duracionMinutos;
   String? _duracionTexto;
-  
+
   // Alertas en la ruta
   List<dynamic> _alertasEnRuta = [];
   bool _cargandoAlertas = false;
-  
+
   // Estado del viaje
   bool _viajeIniciado = false;
   DateTime? _horaInicio;
-  
+
   StreamSubscription? _locationSubscription;
 
   bool _initialized = false;
@@ -83,28 +82,34 @@ class _RutaViajeScreenState extends State<RutaViajeScreen> {
     try {
       // Esperar a que el frame actual termine de construirse
       await Future.delayed(Duration.zero);
-      
+
       if (!mounted) return;
 
       // Solicitar permisos de ubicación
-      final locationService = Provider.of<LocationService>(context, listen: false);
-      
+      final locationService = Provider.of<LocationService>(
+        context,
+        listen: false,
+      );
+
       // Obtener ubicación actual
       final position = await locationService.getCurrentLocation();
-      
+
       if (position == null) {
         setState(() {
-          _errorMessage = 'No se pudo obtener tu ubicación. Verifica los permisos en la configuración.';
+          _errorMessage =
+              'No se pudo obtener tu ubicación. Verifica los permisos en la configuración.';
           _isLoadingRoute = false;
         });
         return;
       }
 
       final currentLatLng = LatLng(position.latitude, position.longitude);
-      
+
       // 3. Destino desde la oportunidad (simulado por ahora)
       // TODO: Agregar coordenadas reales a las oportunidades
-      final destinoLatLng = _getDestinationCoordinates(widget.oportunidad.destino);
+      final destinoLatLng = _getDestinationCoordinates(
+        widget.oportunidad.destino,
+      );
 
       setState(() {
         _currentPosition = currentLatLng;
@@ -120,10 +125,15 @@ class _RutaViajeScreenState extends State<RutaViajeScreen> {
       }
 
       // 6. Suscribirse a actualizaciones de ubicación
-      _locationSubscription = locationService.positionStream.listen((newPosition) {
+      _locationSubscription = locationService.positionStream.listen((
+        newPosition,
+      ) {
         if (mounted) {
           setState(() {
-            _currentPosition = LatLng(newPosition.latitude, newPosition.longitude);
+            _currentPosition = LatLng(
+              newPosition.latitude,
+              newPosition.longitude,
+            );
           });
         }
       });
@@ -132,7 +142,6 @@ class _RutaViajeScreenState extends State<RutaViajeScreen> {
       if (_viajeIniciado) {
         await _cargarAlertasEnRuta();
       }
-
     } catch (e) {
       setState(() {
         _errorMessage = 'Error al cargar la ruta: $e';
@@ -145,12 +154,12 @@ class _RutaViajeScreenState extends State<RutaViajeScreen> {
     try {
       print('🗺️ Iniciando cálculo de ruta...');
       final startTime = DateTime.now();
-      
+
       final routeData = await ORSService.obtenerRuta(origen, destino);
-      
+
       final duration = DateTime.now().difference(startTime);
       print('⏱️ Ruta calculada en ${duration.inMilliseconds}ms');
-      
+
       setState(() {
         _routePoints = routeData['coordinates'] as List<LatLng>;
         _distanciaKm = routeData['distance'];
@@ -164,7 +173,8 @@ class _RutaViajeScreenState extends State<RutaViajeScreen> {
         _errorMessage = 'No se pudo calcular la ruta. Usando línea directa.';
         _routePoints = [origen, destino];
         _distanciaKm = _calculateDirectDistance(origen, destino);
-        _duracionMinutos = (_distanciaKm! / 60 * 60).round(); // Asumiendo 60 km/h
+        _duracionMinutos =
+            (_distanciaKm! / 60 * 60).round(); // Asumiendo 60 km/h
         _duracionTexto = _formatDuration(_duracionMinutos!);
         _isLoadingRoute = false;
       });
@@ -259,10 +269,11 @@ class _RutaViajeScreenState extends State<RutaViajeScreen> {
             ),
             children: [
               TileLayer(
-                urlTemplate: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
+                urlTemplate:
+                    "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
                 subdomains: const ['a', 'b', 'c'],
               ),
-              
+
               // Línea de ruta
               if (_routePoints.isNotEmpty)
                 PolylineLayer(
@@ -274,7 +285,7 @@ class _RutaViajeScreenState extends State<RutaViajeScreen> {
                     ),
                   ],
                 ),
-              
+
               // Marcadores
               MarkerLayer(
                 markers: [
@@ -284,33 +295,35 @@ class _RutaViajeScreenState extends State<RutaViajeScreen> {
                       width: 50.0,
                       height: 50.0,
                       point: _currentPosition!,
-                      builder: (ctx) => Container(
-                        decoration: BoxDecoration(
-                          color: Colors.blue,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 3),
-                        ),
-                        child: const Icon(
-                          Icons.navigation,
-                          color: Colors.white,
-                          size: 24,
-                        ),
-                      ),
+                      builder:
+                          (ctx) => Container(
+                            decoration: BoxDecoration(
+                              color: Colors.blue,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 3),
+                            ),
+                            child: const Icon(
+                              Icons.navigation,
+                              color: Colors.white,
+                              size: 24,
+                            ),
+                          ),
                     ),
-                  
+
                   // Destino
                   if (_destinoPosition != null)
                     Marker(
                       width: 50.0,
                       height: 50.0,
                       point: _destinoPosition!,
-                      builder: (ctx) => const Icon(
-                        Icons.location_on,
-                        color: Colors.red,
-                        size: 50,
-                      ),
+                      builder:
+                          (ctx) => const Icon(
+                            Icons.location_on,
+                            color: Colors.red,
+                            size: 50,
+                          ),
                     ),
-                  
+
                   // Alertas en la ruta
                   ..._alertasEnRuta.map((alerta) {
                     return Marker(
@@ -320,28 +333,32 @@ class _RutaViajeScreenState extends State<RutaViajeScreen> {
                         alerta.coords['lat']!,
                         alerta.coords['lng']!,
                       ),
-                      builder: (ctx) => GestureDetector(
-                        onTap: () => _mostrarDetalleAlerta(alerta),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: _getAlertaColor(alerta.tipo),
-                            shape: BoxShape.circle,
-                            border: Border.all(color: Colors.white, width: 2),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.3),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
+                      builder:
+                          (ctx) => GestureDetector(
+                            onTap: () => _mostrarDetalleAlerta(alerta),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: _getAlertaColor(alerta.tipo),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.white,
+                                  width: 2,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.3),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
                               ),
-                            ],
+                              child: Icon(
+                                _getAlertaIcon(alerta.tipo),
+                                color: Colors.white,
+                                size: 20,
+                              ),
+                            ),
                           ),
-                          child: Icon(
-                            _getAlertaIcon(alerta.tipo),
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                        ),
-                      ),
                     );
                   }),
                 ],
@@ -378,10 +395,7 @@ class _RutaViajeScreenState extends State<RutaViajeScreen> {
                         const SizedBox(height: 8),
                         const Text(
                           'Esto puede tomar unos segundos',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey,
-                          ),
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
                         ),
                       ],
                     ),
@@ -409,12 +423,7 @@ class _RutaViajeScreenState extends State<RutaViajeScreen> {
 
           // Panel inferior con información
           if (!_isLoadingRoute && _distanciaKm != null)
-            Positioned(
-              left: 0,
-              right: 0,
-              bottom: 0,
-              child: _buildInfoPanel(),
-            ),
+            Positioned(left: 0, right: 0, bottom: 0, child: _buildInfoPanel()),
 
           // Botones de acción en esquinas superiores
           if (_viajeIniciado) ...[
@@ -434,7 +443,10 @@ class _RutaViajeScreenState extends State<RutaViajeScreen> {
                   ),
                   const SizedBox(height: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.red,
                       borderRadius: BorderRadius.circular(12),
@@ -470,7 +482,10 @@ class _RutaViajeScreenState extends State<RutaViajeScreen> {
                   // Badge con número de alertas
                   if (_alertasEnRuta.isNotEmpty)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.red,
                         borderRadius: BorderRadius.circular(12),
@@ -536,10 +551,7 @@ class _RutaViajeScreenState extends State<RutaViajeScreen> {
                         children: [
                           const Text(
                             'Destino',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Colors.grey,
-                            ),
+                            style: TextStyle(fontSize: 12, color: Colors.grey),
                           ),
                           Text(
                             widget.oportunidad.destino,
@@ -656,18 +668,9 @@ class _RutaViajeScreenState extends State<RutaViajeScreen> {
         const SizedBox(height: 4),
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
-          ),
-        ),
+        Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
       ],
     );
   }
@@ -675,65 +678,73 @@ class _RutaViajeScreenState extends State<RutaViajeScreen> {
   void _mostrarInformacionViaje() {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Información del viaje'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Origen: ${widget.oportunidad.origen}'),
-            Text('Destino: ${widget.oportunidad.destino}'),
-            if (_distanciaKm != null)
-              Text('Distancia: ${_distanciaKm!.toStringAsFixed(1)} km'),
-            if (_duracionTexto != null)
-              Text('Duración estimada: $_duracionTexto'),
-            Text('Precio: \$${widget.oportunidad.precio.toStringAsFixed(0)}'),
-            if (widget.oportunidad.descripcion != null)
-              Text('Descripción: ${widget.oportunidad.descripcion}'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cerrar'),
+      builder:
+          (context) => AlertDialog(
+            title: const Text('Información del viaje'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Origen: ${widget.oportunidad.origen}'),
+                Text('Destino: ${widget.oportunidad.destino}'),
+                if (_distanciaKm != null)
+                  Text('Distancia: ${_distanciaKm!.toStringAsFixed(1)} km'),
+                if (_duracionTexto != null)
+                  Text('Duración estimada: $_duracionTexto'),
+                Text(
+                  'Precio: \$${widget.oportunidad.precio.toStringAsFixed(0)}',
+                ),
+                if (widget.oportunidad.descripcion != null)
+                  Text('Descripción: ${widget.oportunidad.descripcion}'),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cerrar'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
   Future<bool> _mostrarDialogoPermisos() async {
     return await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogContext) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(Icons.location_on, color: Theme.of(dialogContext).primaryColor),
-            const SizedBox(width: 8),
-            const Text('Permisos de ubicación'),
-          ],
-        ),
-        content: const Text(
-          'Para mostrar la ruta y tu ubicación en tiempo real, necesitamos acceso a tu ubicación GPS.\n\n'
-          '¿Deseas permitir el acceso a tu ubicación?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: const Text('No permitir'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: const Text('Permitir'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Theme.of(dialogContext).primaryColor,
-              foregroundColor: Colors.white,
-            ),
-          ),
-        ],
-      ),
-    ) ?? false;
+          context: context,
+          barrierDismissible: false,
+          builder:
+              (dialogContext) => AlertDialog(
+                title: Row(
+                  children: [
+                    Icon(
+                      Icons.location_on,
+                      color: Theme.of(dialogContext).primaryColor,
+                    ),
+                    const SizedBox(width: 8),
+                    const Text('Permisos de ubicación'),
+                  ],
+                ),
+                content: const Text(
+                  'Para mostrar la ruta y tu ubicación en tiempo real, necesitamos acceso a tu ubicación GPS.\n\n'
+                  '¿Deseas permitir el acceso a tu ubicación?',
+                ),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(dialogContext, false),
+                    child: const Text('No permitir'),
+                  ),
+                  ElevatedButton(
+                    onPressed: () => Navigator.pop(dialogContext, true),
+                    child: const Text('Permitir'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Theme.of(dialogContext).primaryColor,
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                ],
+              ),
+        ) ??
+        false;
   }
 
   Future<void> _iniciarViaje() async {
@@ -742,85 +753,109 @@ class _RutaViajeScreenState extends State<RutaViajeScreen> {
       final confirmar = await showDialog<bool>(
         context: context,
         barrierDismissible: false,
-        builder: (dialogContext) => AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.local_shipping, color: Colors.green),
-              SizedBox(width: 8),
-              Text('Confirmar inicio de viaje'),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                '¿Estás listo para iniciar este viaje?',
-                style: TextStyle(fontWeight: FontWeight.bold),
+        builder:
+            (dialogContext) => AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.local_shipping, color: Colors.green),
+                  SizedBox(width: 8),
+                  Text('Confirmar inicio de viaje'),
+                ],
               ),
-              const SizedBox(height: 16),
-              _buildDetailRow(Icons.route, 'Distancia', '${_distanciaKm?.toStringAsFixed(1) ?? '0'} km'),
-              _buildDetailRow(Icons.access_time, 'Duración', _duracionTexto ?? '0 min'),
-              _buildDetailRow(Icons.location_on, 'Destino', widget.oportunidad.destino),
-              _buildDetailRow(Icons.attach_money, 'Pago', '\$${widget.oportunidad.precio.toStringAsFixed(0)}'),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(Icons.info_outline, size: 16, color: Colors.orange),
-                    SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Recuerda reportar cualquier incidente durante el viaje',
-                        style: TextStyle(fontSize: 12),
-                      ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '¿Estás listo para iniciar este viaje?',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildDetailRow(
+                    Icons.route,
+                    'Distancia',
+                    '${_distanciaKm?.toStringAsFixed(1) ?? '0'} km',
+                  ),
+                  _buildDetailRow(
+                    Icons.access_time,
+                    'Duración',
+                    _duracionTexto ?? '0 min',
+                  ),
+                  _buildDetailRow(
+                    Icons.location_on,
+                    'Destino',
+                    widget.oportunidad.destino,
+                  ),
+                  _buildDetailRow(
+                    Icons.attach_money,
+                    'Pago',
+                    '\$${widget.oportunidad.precio.toStringAsFixed(0)}',
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                  ],
+                    child: const Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          size: 16,
+                          color: Colors.orange,
+                        ),
+                        SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Recuerda reportar cualquier incidente durante el viaje',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: const Text('Cancelar'),
                 ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancelar'),
+                ElevatedButton.icon(
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  icon: const Icon(Icons.play_arrow),
+                  label: const Text('¡Iniciar viaje!'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
             ),
-            ElevatedButton.icon(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              icon: const Icon(Icons.play_arrow),
-              label: const Text('¡Iniciar viaje!'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ],
-        ),
       );
 
       if (confirmar == true && mounted) {
         final scaffoldMessenger = ScaffoldMessenger.of(context);
-        
+
         try {
           await OportunidadService.iniciarViaje(widget.oportunidad.id!);
-          
+
           setState(() {
             _viajeIniciado = true;
             _horaInicio = DateTime.now();
           });
 
           // Iniciar tracking de ubicación
-          final locationService = Provider.of<LocationService>(context, listen: false);
+          final locationService = Provider.of<LocationService>(
+            context,
+            listen: false,
+          );
           await locationService.startTracking();
 
           // Cargar alertas en la ruta
           await _cargarAlertasEnRuta();
-          
+
           scaffoldMessenger.showSnackBar(
             SnackBar(
               content: Row(
@@ -866,86 +901,111 @@ class _RutaViajeScreenState extends State<RutaViajeScreen> {
   Future<void> _finalizarViaje() async {
     try {
       // Calcular tiempo de viaje
-      final tiempoTranscurrido = _horaInicio != null 
-          ? DateTime.now().difference(_horaInicio!).inMinutes 
-          : 0;
+      final tiempoTranscurrido =
+          _horaInicio != null
+              ? DateTime.now().difference(_horaInicio!).inMinutes
+              : 0;
 
       // Mostrar diálogo de confirmación
       final confirmar = await showDialog<bool>(
         context: context,
         barrierDismissible: false,
-        builder: (dialogContext) => AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.flag, color: Colors.green),
-              SizedBox(width: 8),
-              Text('Finalizar viaje'),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                '¿Has llegado al destino?',
-                style: TextStyle(fontWeight: FontWeight.bold),
+        builder:
+            (dialogContext) => AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.flag, color: Colors.green),
+                  SizedBox(width: 8),
+                  Text('Finalizar viaje'),
+                ],
               ),
-              const SizedBox(height: 16),
-              _buildDetailRow(Icons.location_on, 'Destino', widget.oportunidad.destino),
-              _buildDetailRow(Icons.straighten, 'Distancia', '${_distanciaKm?.toStringAsFixed(1) ?? '0'} km'),
-              _buildDetailRow(Icons.timer, 'Tiempo', '${tiempoTranscurrido} min'),
-              _buildDetailRow(Icons.attach_money, 'Pago a recibir', '\$${widget.oportunidad.precio.toStringAsFixed(0)}'),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.green.shade200),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.info_outline, size: 18, color: Colors.green.shade700),
-                    const SizedBox(width: 8),
-                    const Expanded(
-                      child: Text(
-                        'Al finalizar, el contratista será notificado y podrás recibir tu pago.',
-                        style: TextStyle(fontSize: 12),
-                      ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '¿Has llegado al destino?',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  _buildDetailRow(
+                    Icons.location_on,
+                    'Destino',
+                    widget.oportunidad.destino,
+                  ),
+                  _buildDetailRow(
+                    Icons.straighten,
+                    'Distancia',
+                    '${_distanciaKm?.toStringAsFixed(1) ?? '0'} km',
+                  ),
+                  _buildDetailRow(
+                    Icons.timer,
+                    'Tiempo',
+                    '${tiempoTranscurrido} min',
+                  ),
+                  _buildDetailRow(
+                    Icons.attach_money,
+                    'Pago a recibir',
+                    '\$${widget.oportunidad.precio.toStringAsFixed(0)}',
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.green.shade200),
                     ),
-                  ],
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          size: 18,
+                          color: Colors.green.shade700,
+                        ),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'Al finalizar, el contratista será notificado y podrás recibir tu pago.',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: const Text('Cancelar'),
                 ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('Cancelar'),
+                ElevatedButton.icon(
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  icon: const Icon(Icons.check_circle),
+                  label: const Text('Finalizar'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
             ),
-            ElevatedButton.icon(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              icon: const Icon(Icons.check_circle),
-              label: const Text('Finalizar'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ],
-        ),
       );
 
       if (confirmar == true && mounted) {
         final scaffoldMessenger = ScaffoldMessenger.of(context);
         final navigator = Navigator.of(context);
-        
+
         try {
           // Llamar al servicio para finalizar viaje
           await OportunidadService.finalizarViaje(widget.oportunidad.id!);
-          
+
           // Detener tracking
-          final locationService = Provider.of<LocationService>(context, listen: false);
+          final locationService = Provider.of<LocationService>(
+            context,
+            listen: false,
+          );
           locationService.stopTracking();
 
           scaffoldMessenger.showSnackBar(
@@ -970,7 +1030,9 @@ class _RutaViajeScreenState extends State<RutaViajeScreen> {
           // Volver a la pantalla anterior después de un breve delay
           await Future.delayed(const Duration(milliseconds: 500));
           if (mounted) {
-            navigator.pop(true); // Retornar true para indicar que el viaje finalizó
+            navigator.pop(
+              true,
+            ); // Retornar true para indicar que el viaje finalizó
           }
         } catch (e) {
           scaffoldMessenger.showSnackBar(
@@ -992,73 +1054,81 @@ class _RutaViajeScreenState extends State<RutaViajeScreen> {
       final confirmar = await showDialog<bool>(
         context: context,
         barrierDismissible: false,
-        builder: (dialogContext) => AlertDialog(
-          title: const Row(
-            children: [
-              Icon(Icons.warning, color: Colors.orange),
-              SizedBox(width: 8),
-              Text('Cancelar viaje'),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                '¿Estás seguro de que quieres salir del viaje?',
-                style: TextStyle(fontWeight: FontWeight.bold),
+        builder:
+            (dialogContext) => AlertDialog(
+              title: const Row(
+                children: [
+                  Icon(Icons.warning, color: Colors.orange),
+                  SizedBox(width: 8),
+                  Text('Cancelar viaje'),
+                ],
               ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.orange.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.orange.shade200),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.info_outline, size: 18, color: Colors.orange.shade700),
-                    const SizedBox(width: 8),
-                    const Expanded(
-                      child: Text(
-                        'La carga volverá a estar disponible para otros camioneros.',
-                        style: TextStyle(fontSize: 12),
-                      ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '¿Estás seguro de que quieres salir del viaje?',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.orange.shade200),
                     ),
-                  ],
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          size: 18,
+                          color: Colors.orange.shade700,
+                        ),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'La carga volverá a estar disponible para otros camioneros.',
+                            style: TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(dialogContext).pop(false),
+                  child: const Text('No, continuar viaje'),
                 ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(false),
-              child: const Text('No, continuar viaje'),
+                ElevatedButton.icon(
+                  onPressed: () => Navigator.of(dialogContext).pop(true),
+                  icon: const Icon(Icons.exit_to_app),
+                  label: const Text('Sí, salir'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.orange,
+                    foregroundColor: Colors.white,
+                  ),
+                ),
+              ],
             ),
-            ElevatedButton.icon(
-              onPressed: () => Navigator.of(dialogContext).pop(true),
-              icon: const Icon(Icons.exit_to_app),
-              label: const Text('Sí, salir'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.orange,
-                foregroundColor: Colors.white,
-              ),
-            ),
-          ],
-        ),
       );
 
       if (confirmar == true && mounted) {
         final scaffoldMessenger = ScaffoldMessenger.of(context);
         final navigator = Navigator.of(context);
-        
+
         try {
           // Llamar al servicio para cancelar viaje
           await OportunidadService.cancelarViaje(widget.oportunidad.id!);
-          
+
           // Detener tracking
-          final locationService = Provider.of<LocationService>(context, listen: false);
+          final locationService = Provider.of<LocationService>(
+            context,
+            listen: false,
+          );
           locationService.stopTracking();
 
           scaffoldMessenger.showSnackBar(
@@ -1145,9 +1215,9 @@ class _RutaViajeScreenState extends State<RutaViajeScreen> {
           altitudeAccuracy: 0,
           headingAccuracy: 0,
         );
-        
+
         final alertas = await AlertaService.obtenerAlertasCercanas(geoPosition);
-        
+
         if (mounted) {
           setState(() {
             _alertasEnRuta = alertas;
@@ -1220,47 +1290,51 @@ class _RutaViajeScreenState extends State<RutaViajeScreen> {
   void _mostrarDetalleAlerta(AlertaSeguridad alerta) {
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Row(
-          children: [
-            Icon(_getAlertaIcon(alerta.tipo), color: _getAlertaColor(alerta.tipo)),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                alerta.tipo.toUpperCase(),
-                style: const TextStyle(fontSize: 16),
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              alerta.descripcion ?? 'Sin descripción',
-              style: const TextStyle(fontSize: 14),
-            ),
-            const SizedBox(height: 12),
-            Row(
+      builder:
+          (dialogContext) => AlertDialog(
+            title: Row(
               children: [
-                const Icon(Icons.person, size: 14, color: Colors.grey),
-                const SizedBox(width: 4),
-                Text(
-                  'Reportado por: ${alerta.usuario}',
-                  style: const TextStyle(fontSize: 12, color: Colors.grey),
+                Icon(
+                  _getAlertaIcon(alerta.tipo),
+                  color: _getAlertaColor(alerta.tipo),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    alerta.tipo.toUpperCase(),
+                    style: const TextStyle(fontSize: 16),
+                  ),
                 ),
               ],
             ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cerrar'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  alerta.descripcion ?? 'Sin descripción',
+                  style: const TextStyle(fontSize: 14),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const Icon(Icons.person, size: 14, color: Colors.grey),
+                    const SizedBox(width: 4),
+                    Text(
+                      'Reportado por: ${alerta.usuario}',
+                      style: const TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Cerrar'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
@@ -1280,136 +1354,152 @@ class _RutaViajeScreenState extends State<RutaViajeScreen> {
 
     showDialog(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.add_alert, color: Colors.orange),
-            SizedBox(width: 8),
-            Text('Crear Alerta de Seguridad'),
-          ],
-        ),
-        content: StatefulBuilder(
-          builder: (context, setDialogState) => Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Tipo de alerta:'),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                value: tipoSeleccionado,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  isDense: true,
-                ),
-                items: [
-                  {'value': 'trancon', 'label': 'Trancón'},
-                  {'value': 'sospecha', 'label': 'Sospecha'},
-                  {'value': 'intento_robo', 'label': 'Intento de Robo'},
-                  {'value': 'robo', 'label': 'Robo'},
-                  {'value': 'obstaculo', 'label': 'Obstáculo'},
-                ]
-                    .map((tipo) => DropdownMenuItem(
-                          value: tipo['value'],
-                          child: Row(
+      builder:
+          (dialogContext) => AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.add_alert, color: Colors.orange),
+                SizedBox(width: 8),
+                Text('Crear Alerta de Seguridad'),
+              ],
+            ),
+            content: StatefulBuilder(
+              builder:
+                  (context, setDialogState) => Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Tipo de alerta:'),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<String>(
+                        value: tipoSeleccionado,
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                        ),
+                        items:
+                            [
+                                  {'value': 'trancon', 'label': 'Trancón'},
+                                  {'value': 'sospecha', 'label': 'Sospecha'},
+                                  {
+                                    'value': 'intento_robo',
+                                    'label': 'Intento de Robo',
+                                  },
+                                  {'value': 'robo', 'label': 'Robo'},
+                                  {'value': 'obstaculo', 'label': 'Obstáculo'},
+                                ]
+                                .map(
+                                  (tipo) => DropdownMenuItem(
+                                    value: tipo['value'],
+                                    child: Row(
+                                      children: [
+                                        Icon(
+                                          _getAlertaIcon(tipo['value']!),
+                                          size: 16,
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(tipo['label']!),
+                                      ],
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                        onChanged: (value) {
+                          if (value != null) {
+                            setDialogState(() {
+                              tipoSeleccionado = value;
+                            });
+                          }
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      const Text('Descripción:'),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: descripcionController,
+                        decoration: const InputDecoration(
+                          border: OutlineInputBorder(),
+                          hintText: 'Describe el incidente...',
+                        ),
+                        maxLines: 3,
+                      ),
+                    ],
+                  ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton.icon(
+                onPressed: () async {
+                  if (descripcionController.text.trim().isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Por favor ingresa una descripción'),
+                        backgroundColor: Colors.orange,
+                      ),
+                    );
+                    return;
+                  }
+
+                  Navigator.of(dialogContext).pop();
+
+                  try {
+                    await AlertaService.crearAlerta(
+                      tipo: tipoSeleccionado,
+                      coords: {
+                        'lat': _currentPosition!.latitude,
+                        'lng': _currentPosition!.longitude,
+                      },
+                      descripcion: descripcionController.text.trim(),
+                    );
+
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Row(
                             children: [
-                              Icon(_getAlertaIcon(tipo['value']!), size: 16),
+                              Icon(
+                                _getAlertaIcon(tipoSeleccionado),
+                                color: Colors.white,
+                              ),
                               const SizedBox(width: 8),
-                              Text(tipo['label']!),
+                              const Expanded(
+                                child: Text(
+                                  '¡Alerta creada! Gracias por reportar',
+                                ),
+                              ),
                             ],
                           ),
-                        ))
-                    .toList(),
-                onChanged: (value) {
-                  if (value != null) {
-                    setDialogState(() {
-                      tipoSeleccionado = value;
-                    });
+                          backgroundColor: Colors.green,
+                          duration: const Duration(seconds: 3),
+                        ),
+                      );
+
+                      // Recargar alertas
+                      await _cargarAlertasEnRuta();
+                    }
+                  } catch (e) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('Error al crear alerta: $e'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
                   }
                 },
-              ),
-              const SizedBox(height: 16),
-              const Text('Descripción:'),
-              const SizedBox(height: 8),
-              TextField(
-                controller: descripcionController,
-                decoration: const InputDecoration(
-                  border: OutlineInputBorder(),
-                  hintText: 'Describe el incidente...',
+                icon: const Icon(Icons.check),
+                label: const Text('Crear'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
                 ),
-                maxLines: 3,
               ),
             ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('Cancelar'),
-          ),
-          ElevatedButton.icon(
-            onPressed: () async {
-              if (descripcionController.text.trim().isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Por favor ingresa una descripción'),
-                    backgroundColor: Colors.orange,
-                  ),
-                );
-                return;
-              }
-
-              Navigator.of(dialogContext).pop();
-              
-              try {
-                await AlertaService.crearAlerta(
-                  tipo: tipoSeleccionado,
-                  coords: {
-                    'lat': _currentPosition!.latitude,
-                    'lng': _currentPosition!.longitude,
-                  },
-                  descripcion: descripcionController.text.trim(),
-                );
-
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Row(
-                        children: [
-                          Icon(_getAlertaIcon(tipoSeleccionado), color: Colors.white),
-                          const SizedBox(width: 8),
-                          const Expanded(
-                            child: Text('¡Alerta creada! Gracias por reportar'),
-                          ),
-                        ],
-                      ),
-                      backgroundColor: Colors.green,
-                      duration: const Duration(seconds: 3),
-                    ),
-                  );
-
-                  // Recargar alertas
-                  await _cargarAlertasEnRuta();
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Error al crear alerta: $e'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              }
-            },
-            icon: const Icon(Icons.check),
-            label: const Text('Crear'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.orange,
-              foregroundColor: Colors.white,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -1417,79 +1507,77 @@ class _RutaViajeScreenState extends State<RutaViajeScreen> {
     // Mostrar diálogo de confirmación antes de llamar
     final confirmar = await showDialog<bool>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Row(
-          children: [
-            Icon(Icons.sos, color: Colors.red, size: 32),
-            SizedBox(width: 12),
-            Text('Llamada de Emergencia'),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              '¿Estás seguro de llamar al 112?',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+      builder:
+          (dialogContext) => AlertDialog(
+            title: const Row(
+              children: [
+                Icon(Icons.sos, color: Colors.red, size: 32),
+                SizedBox(width: 12),
+                Text('Llamada de Emergencia'),
+              ],
             ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.red.shade50,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.red.shade200),
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '🚨 Número de emergencias: 112',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.red,
-                    ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  '¿Estás seguro de llamar al 112?',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red.shade200),
                   ),
-                  SizedBox(height: 4),
-                  Text(
-                    'Úsalo solo en caso de emergencia real',
-                    style: TextStyle(fontSize: 12),
+                  child: const Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '🚨 Número de emergencias: 112',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.red,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Úsalo solo en caso de emergencia real',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ],
                   ),
-                ],
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: const Text('Cancelar'),
               ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: const Text('Cancelar'),
+              ElevatedButton.icon(
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                icon: const Icon(Icons.phone),
+                label: const Text('Llamar al 112'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
           ),
-          ElevatedButton.icon(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            icon: const Icon(Icons.phone),
-            label: const Text('Llamar al 112'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
-            ),
-          ),
-        ],
-      ),
     );
 
     if (confirmar == true) {
       try {
         final Uri phoneUri = Uri(scheme: 'tel', path: '112');
-        
+
         if (await canLaunchUrl(phoneUri)) {
           await launchUrl(phoneUri);
-          
+
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
@@ -1497,9 +1585,7 @@ class _RutaViajeScreenState extends State<RutaViajeScreen> {
                   children: [
                     Icon(Icons.phone, color: Colors.white),
                     SizedBox(width: 8),
-                    Expanded(
-                      child: Text('Iniciando llamada al 112...'),
-                    ),
+                    Expanded(child: Text('Iniciando llamada al 112...')),
                   ],
                 ),
                 backgroundColor: Colors.red,
