@@ -653,12 +653,43 @@ class _RutaViajeScreenState extends State<RutaViajeScreen> {
                             );
                             if (confirmar == true && mounted) {
                               try {
+                                // Mostrar loading
+                                showDialog(
+                                  context: context,
+                                  barrierDismissible: false,
+                                  builder: (ctx) => const Center(
+                                    child: CircularProgressIndicator(),
+                                  ),
+                                );
+                                
                                 await OportunidadService.cancelarViaje(widget.oportunidad.id!);
-                                if (mounted) Navigator.pop(context);
+                                
+                                if (mounted) {
+                                  // Cerrar loading
+                                  Navigator.pop(context);
+                                  
+                                  // Mostrar mensaje de éxito
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text('✅ Viaje rechazado correctamente'),
+                                      backgroundColor: Colors.orange,
+                                      duration: Duration(seconds: 2),
+                                    ),
+                                  );
+                                  
+                                  // Cerrar pantalla de ruta y volver al listado
+                                  Navigator.pop(context);
+                                }
                               } catch (e) {
                                 if (mounted) {
+                                  // Cerrar loading si hay error
+                                  Navigator.pop(context);
+                                  
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Error: $e')),
+                                    SnackBar(
+                                      content: Text('❌ Error al rechazar: $e'),
+                                      backgroundColor: Colors.red,
+                                    ),
                                   );
                                 }
                               }
