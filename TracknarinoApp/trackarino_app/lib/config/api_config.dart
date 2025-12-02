@@ -15,8 +15,8 @@ class ApiConfig {
         return 'http://localhost:4000/api'; // Para iOS o escritorio
       }
     } else {
-      // URL de producción
-      return 'https://api.trackarino.com/api';
+      // URL de producción - Render
+      return 'https://tracknarino-backend.onrender.com/api';
     }
   }
 
