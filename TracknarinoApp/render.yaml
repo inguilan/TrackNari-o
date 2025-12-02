@@ -3,7 +3,7 @@ services:
     name: tracknarino-backend
     env: node
     plan: free
-    rootDir: Backend
+    rootDir: TracknarinoApp/Backend
     buildCommand: npm install
     startCommand: npm start
     envVars:
