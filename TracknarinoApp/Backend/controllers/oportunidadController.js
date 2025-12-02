@@ -265,6 +265,92 @@ const iniciarViaje = async (req, res) => {
   }
 };
 
+// Cancelar viaje (camionero se sale del viaje)
+const cancelarViaje = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const camioneroId = req.usuario.id;
+
+    const oportunidad = await Oportunidad.findById(id);
+
+    if (!oportunidad) {
+      return res.status(404).json({ error: 'Oportunidad no encontrada' });
+    }
+
+    if (oportunidad.camioneroAsignado.toString() !== camioneroId) {
+      return res.status(403).json({ error: 'No tienes permisos para cancelar este viaje' });
+    }
+
+    if (oportunidad.estado !== 'asignada' && oportunidad.estado !== 'en_ruta') {
+      return res.status(400).json({ error: 'Este viaje no puede ser cancelado' });
+    }
+
+    // Volver a dejar la oportunidad disponible
+    oportunidad.camioneroAsignado = null;
+    oportunidad.estado = 'disponible';
+    await oportunidad.save();
+
+    // Notificar al contratista
+    const contratista = await User.findById(oportunidad.contratista);
+    if (contratista?.deviceToken) {
+      const camionero = await User.findById(camioneroId);
+      await enviarNotificacionFCM(
+        contratista.deviceToken,
+        '⚠️ Viaje cancelado',
+        `${camionero.nombre} ha cancelado el viaje de ${oportunidad.origen} a ${oportunidad.destino}. La carga está disponible nuevamente.`
+      );
+    }
+
+    res.json({ mensaje: 'Viaje cancelado', oportunidad });
+  } catch (error) {
+    console.error('Error al cancelar viaje:', error);
+    res.status(500).json({ error: 'Error al cancelar viaje' });
+  }
+};
+
+// Finalizar viaje (cambiar estado a finalizada)
+const finalizarViaje = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const camioneroId = req.usuario.id;
+
+    const oportunidad = await Oportunidad.findById(id);
+
+    if (!oportunidad) {
+      return res.status(404).json({ error: 'Oportunidad no encontrada' });
+    }
+
+    if (oportunidad.camioneroAsignado.toString() !== camioneroId) {
+      return res.status(403).json({ error: 'No tienes permisos para finalizar este viaje' });
+    }
+
+    if (oportunidad.estado !== 'en_ruta') {
+      return res.status(400).json({ error: 'Este viaje no está en ruta' });
+    }
+
+    // Cambiar estado a finalizada
+    oportunidad.estado = 'finalizada';
+    oportunidad.finalizada = true;
+    await oportunidad.save();
+
+    // Notificar al contratista
+    const contratista = await User.findById(oportunidad.contratista);
+    if (contratista?.deviceToken) {
+      const camionero = await User.findById(camioneroId);
+      await enviarNotificacionFCM(
+        contratista.deviceToken,
+        '✅ Viaje finalizado',
+        `${camionero.nombre} ha completado el viaje de ${oportunidad.origen} a ${oportunidad.destino}.`
+      );
+    }
+
+    res.json({ mensaje: 'Viaje finalizado exitosamente', oportunidad });
+  } catch (error) {
+    console.error('Error al finalizar viaje:', error);
+    res.status(500).json({ error: 'Error al finalizar viaje' });
+  }
+};
+
 module.exports = {
   crearOportunidad,
   listarOportunidades,
@@ -272,5 +358,7 @@ module.exports = {
   finalizarCarga,
   aceptarOportunidad,
   obtenerViajeActivo,
-  iniciarViaje
+  iniciarViaje,
+  cancelarViaje,
+  finalizarViaje
 };

@@ -39,9 +39,10 @@ app.use(cors({
       'http://localhost',
       'http://10.0.2.2:4000',
       'https://trackarino.com',
-      // Agregar tu dominio de Vercel cuando lo tengas
-      'https://tracknarino.vercel.app',
-      'https://tracknarino-backend.onrender.com'
+      // Dominios de Render
+      'https://tracknarino-backend.onrender.com',
+      // Dominios de Vercel
+      'https://tracknarino.vercel.app'
     ];
 
     // Permitir solicitudes sin origen (como aplicaciones móviles o herramientas como curl)
@@ -52,10 +53,14 @@ app.use(cors({
     // Aceptar cualquier puerto en localhost o 127.0.0.1 para desarrollo
     const localhostRegex = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
     
-    // En producción, permitir dominios de Vercel
+    // En producción, permitir dominios de Vercel y Render
     const vercelRegex = /^https:\/\/.*\.vercel\.app$/;
+    const renderRegex = /^https:\/\/.*\.onrender\.com$/;
 
-    if (allowedOrigins.indexOf(origin) !== -1 || localhostRegex.test(origin) || vercelRegex.test(origin)) {
+    if (allowedOrigins.indexOf(origin) !== -1 || 
+        localhostRegex.test(origin) || 
+        vercelRegex.test(origin) ||
+        renderRegex.test(origin)) {
       return callback(null, true);
     }
 

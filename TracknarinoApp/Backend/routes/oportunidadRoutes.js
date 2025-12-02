@@ -25,6 +25,12 @@ router.get('/viaje-activo', verificarToken, soloRol('camionero'), require('../co
 // Iniciar viaje (cambiar estado a en_ruta)
 router.put('/:id/iniciar', verificarToken, soloRol('camionero'), require('../controllers/oportunidadController').iniciarViaje);
 
+// Cancelar viaje (camionero se sale del viaje)
+router.put('/:id/cancelar', verificarToken, soloRol('camionero'), require('../controllers/oportunidadController').cancelarViaje);
+
+// Finalizar viaje (cambiar estado a finalizada)
+router.put('/:id/finalizar', verificarToken, soloRol('camionero'), require('../controllers/oportunidadController').finalizarViaje);
+
 // Finalizar una carga (solo contratista)
 router.post('/finalizar/:id', verificarToken, soloRol('contratista'), finalizarCarga);
 

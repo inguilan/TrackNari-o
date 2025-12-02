@@ -268,4 +268,34 @@ class OportunidadService {
       rethrow;
     }
   }
+
+  /// Finalizar viaje
+  static Future<Oportunidad> finalizarViaje(String oportunidadId) async {
+    try {
+      final response = await ApiService.put(
+        '${ApiConfig.oportunidades}/$oportunidadId/finalizar',
+        {},
+      );
+      
+      return Oportunidad.fromJson(response['oportunidad']);
+    } catch (e) {
+      print('Error al finalizar viaje: $e');
+      rethrow;
+    }
+  }
+
+  /// Cancelar viaje (camionero se sale del viaje)
+  static Future<Oportunidad> cancelarViaje(String oportunidadId) async {
+    try {
+      final response = await ApiService.put(
+        '${ApiConfig.oportunidades}/$oportunidadId/cancelar',
+        {},
+      );
+      
+      return Oportunidad.fromJson(response['oportunidad']);
+    } catch (e) {
+      print('Error al cancelar viaje: $e');
+      rethrow;
+    }
+  }
 } 

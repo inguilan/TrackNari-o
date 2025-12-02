@@ -143,7 +143,13 @@ class _RutaViajeScreenState extends State<RutaViajeScreen> {
 
   Future<void> _obtenerRuta(LatLng origen, LatLng destino) async {
     try {
+      print('🗺️ Iniciando cálculo de ruta...');
+      final startTime = DateTime.now();
+      
       final routeData = await ORSService.obtenerRuta(origen, destino);
+      
+      final duration = DateTime.now().difference(startTime);
+      print('⏱️ Ruta calculada en ${duration.inMilliseconds}ms');
       
       setState(() {
         _routePoints = routeData['coordinates'] as List<LatLng>;
@@ -347,16 +353,36 @@ class _RutaViajeScreenState extends State<RutaViajeScreen> {
           if (_isLoadingRoute)
             Container(
               color: Colors.black54,
-              child: const Center(
+              child: Center(
                 child: Card(
+                  margin: const EdgeInsets.all(32),
                   child: Padding(
-                    padding: EdgeInsets.all(24.0),
+                    padding: const EdgeInsets.all(32.0),
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        CircularProgressIndicator(),
-                        SizedBox(height: 16),
-                        Text('Calculando ruta...'),
+                        CircularProgressIndicator(
+                          strokeWidth: 3,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Theme.of(context).primaryColor,
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        const Text(
+                          'Calculando la mejor ruta...',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Esto puede tomar unos segundos',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -555,44 +581,66 @@ class _RutaViajeScreenState extends State<RutaViajeScreen> {
                 const SizedBox(height: 16),
 
                 // Botones de acción
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: _centerMapOnRoute,
-                        icon: const Icon(Icons.center_focus_strong),
-                        label: const Text('Centrar'),
+                if (_viajeIniciado) ...[
+                  // Cuando el viaje está iniciado, mostrar botones de finalizar y cancelar
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _cancelarViaje,
+                          icon: const Icon(Icons.close),
+                          label: const Text('Salir'),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.red,
+                            side: const BorderSide(color: Colors.red),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 2,
-                      child: _viajeIniciado
-                          ? ElevatedButton.icon(
-                              onPressed: null, // Deshabilitado
-                              icon: const Icon(Icons.local_shipping),
-                              label: const Text('Viaje en curso'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.blue,
-                                foregroundColor: Colors.white,
-                                disabledBackgroundColor: Colors.blue.shade300,
-                                disabledForegroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                              ),
-                            )
-                          : ElevatedButton.icon(
-                              onPressed: _iniciarViaje,
-                              icon: const Icon(Icons.play_arrow),
-                              label: const Text('Iniciar viaje'),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.green,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                              ),
-                            ),
-                    ),
-                  ],
-                ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: ElevatedButton.icon(
+                          onPressed: _finalizarViaje,
+                          icon: const Icon(Icons.flag),
+                          label: const Text('Finalizar viaje'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ] else ...[
+                  // Cuando el viaje no está iniciado
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _centerMapOnRoute,
+                          icon: const Icon(Icons.center_focus_strong),
+                          label: const Text('Centrar'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 2,
+                        child: ElevatedButton.icon(
+                          onPressed: _iniciarViaje,
+                          icon: const Icon(Icons.play_arrow),
+                          label: const Text('Iniciar viaje'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.blue,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -812,6 +860,242 @@ class _RutaViajeScreenState extends State<RutaViajeScreen> {
       }
     } catch (e) {
       debugPrint('Error al mostrar diálogo: $e');
+    }
+  }
+
+  Future<void> _finalizarViaje() async {
+    try {
+      // Calcular tiempo de viaje
+      final tiempoTranscurrido = _horaInicio != null 
+          ? DateTime.now().difference(_horaInicio!).inMinutes 
+          : 0;
+
+      // Mostrar diálogo de confirmación
+      final confirmar = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.flag, color: Colors.green),
+              SizedBox(width: 8),
+              Text('Finalizar viaje'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '¿Has llegado al destino?',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              _buildDetailRow(Icons.location_on, 'Destino', widget.oportunidad.destino),
+              _buildDetailRow(Icons.straighten, 'Distancia', '${_distanciaKm?.toStringAsFixed(1) ?? '0'} km'),
+              _buildDetailRow(Icons.timer, 'Tiempo', '${tiempoTranscurrido} min'),
+              _buildDetailRow(Icons.attach_money, 'Pago a recibir', '\$${widget.oportunidad.precio.toStringAsFixed(0)}'),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.green.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, size: 18, color: Colors.green.shade700),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Al finalizar, el contratista será notificado y podrás recibir tu pago.',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton.icon(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              icon: const Icon(Icons.check_circle),
+              label: const Text('Finalizar'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmar == true && mounted) {
+        final scaffoldMessenger = ScaffoldMessenger.of(context);
+        final navigator = Navigator.of(context);
+        
+        try {
+          // Llamar al servicio para finalizar viaje
+          await OportunidadService.finalizarViaje(widget.oportunidad.id!);
+          
+          // Detener tracking
+          final locationService = Provider.of<LocationService>(context, listen: false);
+          locationService.stopTracking();
+
+          scaffoldMessenger.showSnackBar(
+            SnackBar(
+              content: Row(
+                children: const [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '¡Viaje finalizado! El contratista ha sido notificado.',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+
+          // Volver a la pantalla anterior después de un breve delay
+          await Future.delayed(const Duration(milliseconds: 500));
+          if (mounted) {
+            navigator.pop(true); // Retornar true para indicar que el viaje finalizó
+          }
+        } catch (e) {
+          scaffoldMessenger.showSnackBar(
+            SnackBar(
+              content: Text('Error al finalizar viaje: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error al mostrar diálogo de finalización: $e');
+    }
+  }
+
+  Future<void> _cancelarViaje() async {
+    try {
+      // Mostrar diálogo de confirmación
+      final confirmar = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (dialogContext) => AlertDialog(
+          title: const Row(
+            children: [
+              Icon(Icons.warning, color: Colors.orange),
+              SizedBox(width: 8),
+              Text('Cancelar viaje'),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '¿Estás seguro de que quieres salir del viaje?',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, size: 18, color: Colors.orange.shade700),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'La carga volverá a estar disponible para otros camioneros.',
+                        style: TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('No, continuar viaje'),
+            ),
+            ElevatedButton.icon(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              icon: const Icon(Icons.exit_to_app),
+              label: const Text('Sí, salir'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange,
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ],
+        ),
+      );
+
+      if (confirmar == true && mounted) {
+        final scaffoldMessenger = ScaffoldMessenger.of(context);
+        final navigator = Navigator.of(context);
+        
+        try {
+          // Llamar al servicio para cancelar viaje
+          await OportunidadService.cancelarViaje(widget.oportunidad.id!);
+          
+          // Detener tracking
+          final locationService = Provider.of<LocationService>(context, listen: false);
+          locationService.stopTracking();
+
+          scaffoldMessenger.showSnackBar(
+            SnackBar(
+              content: Row(
+                children: const [
+                  Icon(Icons.info, color: Colors.white),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Has salido del viaje. La carga está disponible nuevamente.',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
+              ),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 3),
+            ),
+          );
+
+          // Volver a la pantalla anterior
+          await Future.delayed(const Duration(milliseconds: 500));
+          if (mounted) {
+            navigator.pop(false); // Retornar false para indicar que se canceló
+          }
+        } catch (e) {
+          scaffoldMessenger.showSnackBar(
+            SnackBar(
+              content: Text('Error al cancelar viaje: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint('Error al mostrar diálogo de cancelación: $e');
     }
   }
 

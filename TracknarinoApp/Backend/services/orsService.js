@@ -33,16 +33,18 @@ async function obtenerRutaORS(origen, destino) {
     
     // Añadir parámetros para obtener geometría completa
     const params = {
-      overview: 'full',        // Geometría completa de la ruta
+      overview: 'simplified',  // Usar geometría simplificada para ser más rápido
       geometries: 'polyline',  // Formato polyline (más compacto)
-      steps: true,             // Incluir pasos de navegación
+      steps: false,            // No incluir pasos detallados (más rápido)
+      alternatives: false,     // Solo una ruta (más rápido)
+      continue_straight: false, // Permitir giros para rutas más cortas
     };
 
     console.log(`📍 URL OSRM: ${url}`);
 
     const response = await axios.get(url, {
       params,
-      timeout: 15000, // 15 segundos de timeout (OSRM puede ser lento)
+      timeout: 8000, // 8 segundos de timeout (más rápido)
     });
 
     if (!response.data) {
@@ -58,7 +60,10 @@ async function obtenerRutaORS(origen, destino) {
       throw new Error('No se encontró una ruta válida en OSRM');
     }
 
+    // Usar la primera ruta (ya no buscamos alternativas para ser más rápidos)
     const route = response.data.routes[0];
+    
+    console.log(`📊 Ruta encontrada: ${(route.distance / 1000).toFixed(2)} km`);
     
     // Decodificar la geometría polyline a coordenadas [lng, lat]
     const decodedCoordinates = polyline.decode(route.geometry);

@@ -43,9 +43,11 @@ router.get('/listar', async (req, res) => {
 });
 
 // Listar alertas cercanas a una ubicación (lat, lng, radio en metros)
-router.post('/cercanas', async (req, res) => {
+router.post('/cercanas', verificarToken, async (req, res) => {
   try {
     const { lat, lng, radio } = req.body;
+
+    console.log('🔍 Buscando alertas cercanas:', { lat, lng, radio });
 
     if (!lat || !lng) {
       return res.status(400).json({ error: 'Latitud y longitud son obligatorios' });
@@ -62,6 +64,8 @@ router.post('/cercanas', async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(100)
       .populate('usuario', 'nombre tipoUsuario');
+
+    console.log(`📊 Total de alertas en BD: ${todas.length}`);
 
     // Función haversine para calcular distancia
     const haversine = (coords1, coords2) => {
@@ -89,6 +93,8 @@ router.post('/cercanas', async (req, res) => {
 
       return distancia <= rangoMetros;
     });
+
+    console.log(`✅ Alertas cercanas encontradas: ${cercanas.length}`);
 
     res.json(cercanas);
   } catch (error) {

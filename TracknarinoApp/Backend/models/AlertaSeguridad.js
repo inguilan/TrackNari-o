@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const alertaSeguridadSchema = new mongoose.Schema({
   tipo: {
     type: String,
-    enum: ['trancon', 'sospecha', 'intento_robo', 'robo', 'obstaculo'],
+    enum: ['trancon', 'sospecha', 'intento_robo', 'robo', 'obstaculo', 'clima', 'accidente', 'policia', 'otro'],
     required: true
   },
   descripcion: {
