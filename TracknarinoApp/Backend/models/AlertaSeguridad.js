@@ -15,8 +15,15 @@ const alertaSeguridadSchema = new mongoose.Schema({
     required: true
   },
   coords: {
-    lat: Number,
-    lng: Number
+    lat: { type: Number, required: true },
+    lng: { type: Number, required: true }
+  },
+  compartir: {
+    type: Boolean,
+    default: true
+  },
+  imagenUrl: {
+    type: String
   },
   timestamp: {
     type: Date,
@@ -25,5 +32,9 @@ const alertaSeguridadSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+// Índice para búsquedas geoespaciales más rápidas
+alertaSeguridadSchema.index({ 'coords.lat': 1, 'coords.lng': 1 });
+alertaSeguridadSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model('AlertaSeguridad', alertaSeguridadSchema);

@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 
 class ApiConfig {
-  static bool isDevelopment = true;
+  static bool isDevelopment = false; // ✅ Cambiar a false para usar producción
   
   // Determinar la URL base correcta según la plataforma
   static String get _baseUrl {
@@ -15,8 +15,8 @@ class ApiConfig {
         return 'http://localhost:4000/api'; // Para iOS o escritorio
       }
     } else {
-      // URL de producción - Render
-      return 'https://tracknarino-backend.onrender.com/api';
+      // URL de producción - Render ✅ Corregida
+      return 'https://tracknari-o-1.onrender.com/api';
     }
   }
 
