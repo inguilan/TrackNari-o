@@ -629,14 +629,58 @@ class _RutaViajeScreenState extends State<RutaViajeScreen> {
                   // Cuando el viaje no está iniciado
                   Row(
                     children: [
+                      // Botón RECHAZAR viaje
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () async {
+                            final confirmar = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('¿Rechazar?'),
+                                content: const Text('¿Deseas rechazar este viaje?'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx, false),
+                                    child: const Text('No'),
+                                  ),
+                                  ElevatedButton(
+                                    onPressed: () => Navigator.pop(ctx, true),
+                                    style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                                    child: const Text('Rechazar'),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (confirmar == true && mounted) {
+                              try {
+                                await OportunidadService.cancelarViaje(widget.oportunidad.id!);
+                                if (mounted) Navigator.pop(context);
+                              } catch (e) {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Error: $e')),
+                                  );
+                                }
+                              }
+                            }
+                          },
+                          icon: const Icon(Icons.cancel, size: 18),
+                          label: const Text('Rechazar', style: TextStyle(fontSize: 11)),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.red,
+                            side: const BorderSide(color: Colors.red),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
                       Expanded(
                         child: OutlinedButton.icon(
                           onPressed: _centerMapOnRoute,
-                          icon: const Icon(Icons.center_focus_strong),
-                          label: const Text('Centrar'),
+                          icon: const Icon(Icons.center_focus_strong, size: 18),
+                          label: const Text('Ver', style: TextStyle(fontSize: 11)),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 6),
                       Expanded(
                         flex: 2,
                         child: ElevatedButton.icon(
