@@ -45,18 +45,21 @@ class User {
       empresa: json['empresa'],
       empresaAfiliada: json['empresaAfiliada'],
       numeroCedula: json['numeroCedula'],
-      camion: json['camion'] != null 
-          ? Map<String, dynamic>.from(json['camion']) 
-          : null,
+      camion:
+          json['camion'] != null
+              ? Map<String, dynamic>.from(json['camion'])
+              : null,
       metodoPago: json['metodoPago'],
       isDisponible: json['isDisponible'] ?? false,
       calificacion: json['calificacion']?.toDouble(),
       viajesCompletados: json['viajesCompletados'],
       estadoAprobacion: json['estadoAprobacion'] ?? 'pendiente',
-      camionerosAfiliados: json['camionerosAfiliados'] != null
-          ? List<String>.from(json['camionerosAfiliados'])
-          : null,
-      disponibleParaSolicitarCamioneros: json['disponibleParaSolicitarCamioneros'] ?? true,
+      camionerosAfiliados:
+          json['camionerosAfiliados'] != null
+              ? List<String>.from(json['camionerosAfiliados'])
+              : null,
+      disponibleParaSolicitarCamioneros:
+          json['disponibleParaSolicitarCamioneros'] ?? true,
     );
   }
 
@@ -76,8 +79,10 @@ class User {
       if (calificacion != null) 'calificacion': calificacion,
       if (viajesCompletados != null) 'viajesCompletados': viajesCompletados,
       if (estadoAprobacion != null) 'estadoAprobacion': estadoAprobacion,
-      if (camionerosAfiliados != null) 'camionerosAfiliados': camionerosAfiliados,
-      if (disponibleParaSolicitarCamioneros != null) 'disponibleParaSolicitarCamioneros': disponibleParaSolicitarCamioneros,
+      if (camionerosAfiliados != null)
+        'camionerosAfiliados': camionerosAfiliados,
+      if (disponibleParaSolicitarCamioneros != null)
+        'disponibleParaSolicitarCamioneros': disponibleParaSolicitarCamioneros,
     };
   }
 
@@ -110,7 +115,9 @@ class User {
       viajesCompletados: viajesCompletados ?? this.viajesCompletados,
       estadoAprobacion: estadoAprobacion ?? this.estadoAprobacion,
       camionerosAfiliados: camionerosAfiliados ?? this.camionerosAfiliados,
-      disponibleParaSolicitarCamioneros: disponibleParaSolicitarCamioneros ?? this.disponibleParaSolicitarCamioneros,
+      disponibleParaSolicitarCamioneros:
+          disponibleParaSolicitarCamioneros ??
+          this.disponibleParaSolicitarCamioneros,
     );
   }
-} 
+}

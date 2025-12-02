@@ -1,14 +1,15 @@
 import 'dart:async';
 import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart' as google_maps;
-import '../../services/location_service.dart';
-import 'package:provider/provider.dart';
 import 'package:flutter_map/flutter_map.dart';
-import 'package:latlong2/latlong.dart' as latlong;
+import 'package:google_maps_flutter/google_maps_flutter.dart' as google_maps;
 import 'package:google_maps_flutter_platform_interface/google_maps_flutter_platform_interface.dart' show BitmapDescriptor;
-import '../../utils/flutter_map_fixes.dart'; // Importar el archivo de parches
+import 'package:latlong2/latlong.dart' as latlong;
+import 'package:provider/provider.dart';
+
+import '../../services/location_service.dart';
 
 class SeguimientoScreen extends StatefulWidget {
   const SeguimientoScreen({super.key});
