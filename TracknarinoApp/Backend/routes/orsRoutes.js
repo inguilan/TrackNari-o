@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const { obtenerRutaORS } = require('../services/orsService');
+const verificarToken = require('../middleware/authMiddleware');
 
-// POST /api/ors/ruta - Endpoint público (no requiere autenticación)
-router.post('/ruta', async (req, res) => {
+// POST /api/ors/ruta - Endpoint autenticado
+router.post('/ruta', verificarToken, async (req, res) => {
   try {
     const { origen, destino } = req.body;
 

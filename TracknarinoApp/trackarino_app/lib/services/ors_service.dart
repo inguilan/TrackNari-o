@@ -18,14 +18,11 @@ class ORSService {
 
       print('📤 Enviando al backend: $data');
 
-      // Usar postUnauth porque el endpoint es público (no requiere autenticación)
-      final url = '${ApiConfig.baseUrl}/ors/ruta';
-      print('📡 URL completa: $url');
-      final response = await ApiService.postUnauth(url, data);
+      // Usar autenticación para el endpoint ORS
+      final response = await ApiService.post('${ApiConfig.baseUrl}/ors/ruta', data);
       
       print('📥 Respuesta del backend recibida');
-      print('   - Tipo de coordinates: ${response['coordinates']?.runtimeType}');
-      print('   - Cantidad de coordenadas: ${response['coordinates']?.length ?? 0}');
+      print('   - Respuesta completa: $response');
       
       // Parsear la respuesta
       if (response['coordinates'] != null) {
@@ -38,27 +35,24 @@ class ORSService {
           }
         }
 
-        // Convertir distancia y duración a double/int correctamente
-        final distancia = response['distancia'] is String 
-            ? double.parse(response['distancia']) 
-            : (response['distancia'] as num).toDouble();
+        // Extraer distancia y duración (backend puede devolver con nombres diferentes)
+        final distanciaVal = response['distancia'] ?? response['distance'];
+        final duracionVal = response['duracion'] ?? response['duration'];
         
-        final duracion = response['duracion'] is String
-            ? int.parse(response['duracion'])
-            : response['duracion'] as int;
+        final distancia = distanciaVal is String 
+            ? double.parse(distanciaVal) 
+            : (distanciaVal as num).toDouble();
+        
+        final duracion = duracionVal is String
+            ? int.parse(duracionVal)
+            : (duracionVal as int);
 
         print('✅ Ruta procesada: ${routePoints.length} puntos');
         print('   - Distancia: $distancia km');
         print('   - Duración: $duracion min');
 
-        if (routePoints.length < 3) {
-          print('⚠️ WARNING: Solo ${routePoints.length} puntos! Esto es una línea recta.');
-          if (response['fallback'] == true) {
-            print('⚠️ FALLBACK detectado - OSRM falló, reintentando...');
-            // Esperar un momento y reintentar
-            await Future.delayed(Duration(milliseconds: 500));
-            throw Exception('OSRM fallback - reintentando');
-          }
+        if (routePoints.isEmpty) {
+          throw Exception('No se obtuvieron puntos de ruta');
         }
 
         return {

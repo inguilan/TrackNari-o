@@ -36,8 +36,9 @@ async function obtenerRutaORS(origen, destino) {
       overview: 'simplified',  // Usar geometría simplificada para ser más rápido
       geometries: 'polyline',  // Formato polyline (más compacto)
       steps: false,            // No incluir pasos detallados (más rápido)
-      alternatives: false,     // Solo una ruta (más rápido)
-      continue_straight: false, // Permitir giros para rutas más cortas
+      alternatives: false,     // Solo una ruta (la más corta)
+      continue_straight: false, // Permitir giros para encontrar LA RUTA MÁS CORTA
+      annotations: false,      // No incluir anotaciones extras
     };
 
     console.log(`📍 URL OSRM: ${url}`);
